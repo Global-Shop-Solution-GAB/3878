@@ -1,0 +1,159 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.UDT.uACK.Define("ORDER_NO",String,ORDER_NO)
+Variable.UDT.uACK.Define("RPTID",String,RPTID)
+Variable.uGlobal.uACK.Declare("uACK")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+'declare local variables
+V.Local.sError.Declare(String)
+V.local.ssql.declare(String)
+V.Local.sordernum.Declare(String)
+V.Local.spn.Declare(String)
+V.Local.spv.Declare(String)
+V.Local.sparams.Declare(String)
+V.Local.sreportid.Declare(String)
+V.Local.sterminal.Declare(String)
+V.Local.spdfdir.Declare(String)
+V.Local.i.Declare(Long)
+V.Local.bexists.Declare(Boolean)
+V.Local.sfile.Declare(String)
+V.Local.irepid.Declare(Long)
+V.Local.sfile2.Declare(String)
+V.Local.bfilecheck.Declare(Boolean)
+
+'open connection to the database
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+'if the user clicks the print button on the order entry screen
+F.Intrinsic.Control.If(V.Caller.Hook,=,11890)
+	'display the wait dialog
+	F.Intrinsic.UI.InvokeWaitDialog("Please wait while the reports are being saved.","Saving Reports")
+	'build the file path for the report
+	F.Intrinsic.String.Build("{0}\{1}\{2}",V.Caller.Busintdir,"Custom","GCG_3878_OE_ACKNOWLEDGEMENT.RPT",V.Local.sfile)
+	'get the terminal number
+	V.local.sterminal.Set(V.Caller.Terminal)
+	'check to see if the file exists
+	F.Intrinsic.File.Exists(V.Local.sfile,V.Local.bexists)
+	'if it does initialize the report, otherwise inform the user the report was not found and close the program
+	F.Intrinsic.Control.If(V.Local.bexists,=,True)
+		F.Global.BI.InitializeReport("Custom Ack Report",V.Local.sfile,V.Local.irepid)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.UI.Msgbox("Report was not found")
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+	'select the order_no and report ID
+	F.Intrinsic.String.Build("select DISTINCT ORDER_NO, RPTID  from BI_ACKNWLDGMNT where TERMINAL = '{0}'",V.Local.sterminal,V.Local.ssql)
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rst",V.Local.ssql)
+
+	F.Intrinsic.Control.DoUntil(V.ODBC.con!rst.EOF,=,True)
+		'set local variables to order number and report ID
+		V.Local.sordernum.Set(V.ODBC.con!rst.FieldValLTrim!ORDER_NO)
+		V.Local.sreportid.Set(V.ODBC.con!rst.FieldValTrim!RPTID)
+		'build the file location and name
+		F.Intrinsic.String.Concat("\\SERVER\Data\Customer Service\",V.Local.sordernum,".pdf",V.local.spdfdir)
+		'set the parameter names
+		V.Local.spn.Set("Terminal*!*REPORTID*!*Includestax*!*DEC*!*ORDERNO*!*COMMENTS*!*LOGO")
+'		'set the parameter values
+		F.Intrinsic.String.Build("{0}*!*{1}*!*{2}*!*{3}*!*{4}*!*{5}*!*{6}",V.Caller.Terminal,V.Local.sreportid,"Y","",V.Local.sordernum,"","",V.Local.spv)
+		'split both the names and the values
+		F.Intrinsic.String.Split(V.Local.spn,"*!*",V.Local.spn)
+		F.Intrinsic.String.Split(V.Local.spv,"*!*",V.Local.spv)
+		'save the report in the specified file directory named as  current order no
+		F.Global.BI.SaveReport(V.Local.irepid,1,V.Local.spn,V.Local.spv,V.Local.spdfdir)
+		F.ODBC.con!rst.MoveNext
+	F.intrinsic.control.Loop
+'close the wait dialog
+F.intrinsic.UI.CloseWaitDialog
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Caller.Hook,=,16090)
+'if the user runs the report from REPORTS
+F.Intrinsic.Control.AndIf(V.Passed.009001,=,000052)
+
+	'display the wait dialog
+	F.Intrinsic.UI.InvokeWaitDialog("Please wait while the reports are being saved.","Saving Reports")
+	'build the file path for the report
+	F.Intrinsic.String.Build("{0}\{1}\{2}",V.Caller.Busintdir,"Custom","GCG_3878_OE_ACKNOWLEDGEMENT.RPT",V.Local.sfile)
+	'get the terminal number
+	V.local.sterminal.Set(V.Caller.Terminal)
+	'check to see if the file exists
+	F.Intrinsic.File.Exists(V.Local.sfile,V.Local.bexists)
+	'if it does initialize the report, otherwise inform the user the report was not found and close the program
+	F.Intrinsic.Control.If(V.Local.bexists,=,True)
+		F.Global.BI.InitializeReport("Custom Ack Report",V.Local.sfile,V.Local.irepid)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.UI.Msgbox("Report was not found")
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+	'select the order_no and report ID
+	F.Intrinsic.String.Build("select DISTINCT ORDER_NO, RPTID  from BI_ACKNWLDGMNT where TERMINAL = '{0}'",V.Local.sterminal,V.Local.ssql)
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rst",V.Local.ssql)
+
+	F.Intrinsic.Control.DoUntil(V.ODBC.con!rst.EOF,=,True)
+		'set local variables to order number and report ID
+		V.Local.sordernum.Set(V.ODBC.con!rst.FieldValLTrim!ORDER_NO)
+		V.Local.sreportid.Set(V.ODBC.con!rst.FieldValTrim!RPTID)
+		'build the file location and name
+		F.Intrinsic.String.Concat("\\SERVER\Data\Customer Service\",V.Local.sordernum,".pdf",V.local.spdfdir)
+		'set the parameter names
+		V.Local.spn.Set("Terminal*!*REPORTID*!*Includestax*!*DEC*!*ORDERNO*!*COMMENTS*!*LOGO")
+'		'set the parameter values
+		F.Intrinsic.String.Build("{0}*!*{1}*!*{2}*!*{3}*!*{4}*!*{5}*!*{6}",V.Caller.Terminal,V.Local.sreportid,"Y","",V.Local.sordernum,"","",V.Local.spv)
+		'split both the names and the values
+		F.Intrinsic.String.Split(V.Local.spn,"*!*",V.Local.spn)
+		F.Intrinsic.String.Split(V.Local.spv,"*!*",V.Local.spv)
+		'save the report in the specified file directory named as  current order no
+		F.Global.BI.SaveReport(V.Local.irepid,1,V.Local.spn,V.Local.spv,V.Local.spdfdir)
+		F.ODBC.con!rst.MoveNext
+	F.intrinsic.control.Loop
+	'closethewaitdialog
+	F.intrinsic.UI.CloseWaitDialog
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.CallSub(Unload)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3878_ACK_AUTO.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Unload)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.SetErrorHandler("Unload_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'closes the connection to the database
+F.ODBC.Connection!con.Close
+
+'closes the program
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3878_ACK_AUTO.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Unload.End
+
+
